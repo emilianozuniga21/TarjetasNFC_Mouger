@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import QrScanner from './components/QrScanner'
 import type { Session } from '@supabase/supabase-js'
 import { LayoutDashboard, Nfc, Layers, Building2, LogOut, Copy, Download, X } from 'lucide-react'
 import { sb, tagUrl, qrSvg, qrPng, save, batchPdf, isGoogleUrl, type Tag, type Business } from './lib'
@@ -55,6 +56,18 @@ function Dash() {
 }
 
 function Inv() {
+  const [scanning, setScanning] = useState(false), [scanError, setScanError] = useState('')
+  const findScanned = async (code: string) => {
+    setScanning(false)
+    setScanError('Buscando cartel…')
+    try {
+      const { data, error } = await sb.from('tags').select('*, businesses(trade_name), models(name)').eq('public_code', code).maybeSingle()
+      if (error) { setScanError('No se pudo consultar el cartel. Intenta de nuevo.'); return }
+      if (!data) { setScanError('Este QR no está registrado en tu inventario.'); return }
+      setScanError('')
+      setSel(data as Tag)
+    } catch { setScanError('No se pudo conectar. Intenta de nuevo.') }
+  }
   const [q, setQ] = useState(''), [st, setSt] = useState(''), [pg, setPg] = useState(0), [rows, setRows] = useState<Tag[]>([]), [n, setN] = useState(0), [sel, setSel] = useState<Tag | null>(null)
   const load = async () => {
     let y = sb.from('tags').select('*, businesses(trade_name), models(name)', { count: 'exact' }).order('folio').range(pg * 20, pg * 20 + 19)
@@ -62,6 +75,9 @@ function Inv() {
     const { data, count } = await y; setRows((data as Tag[]) || []); setN(count || 0) }
   useEffect(() => { load() }, [pg, st, q])
   return <div className="space-y-4"><h2 className="text-2xl font-bold text-[#0b1f3a]">Inventario NFC</h2>
+    <button className={btn} onClick={() => { setScanError(''); setScanning(true) }}>Escanear QR</button>
+    {scanError && <p role="status" className="text-sm text-slate-600">{scanError}</p>}
+    {scanning && <QrScanner onClose={() => setScanning(false)} onDetected={findScanned} />}
     <div className="flex gap-2"><input className={inp} placeholder="Buscar folio o código" value={q} onChange={e => { setPg(0); setQ(e.target.value) }} />
       <select className={inp + ' max-w-48'} value={st} onChange={e => { setPg(0); setSt(e.target.value) }}><option value="">Todos</option>{ST.map(s => <option key={s}>{s}</option>)}</select></div>
     <div className={card + ' overflow-x-auto p-0'}><table className="w-full text-sm"><thead className="text-left text-slate-500"><tr>{['Folio', 'Código', 'Modelo', 'Estado', 'Negocio'].map(h => <th key={h} className="p-3">{h}</th>)}</tr></thead>
@@ -112,9 +128,27 @@ function Batch() {
 }
 
 function Businesses() {
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [l, setL] = useState<Business[]>([]), [f, setF] = useState<Partial<Business>>({}), [err, setErr] = useState('')
   const load = async () => setL(((await sb.from('businesses').select('*, tags(folio)').order('trade_name')).data as Business[]) || [])
   useEffect(() => { load() }, [])
+  const remove = async (b: Business) => {
+    setErr('')
+    if (b.tags?.length) return setErr('Este negocio tiene carteles vinculados. Reasígnalos o desvincúlalos desde Inventario NFC antes de eliminarlo.')
+    if (!window.confirm(`¿Eliminar el negocio "${b.trade_name}"? Esta acción no se puede deshacer.`)) return
+    setDeleting(b.id)
+    try {
+      const { data, error } = await sb.from('businesses').delete().eq('id', b.id).select('id')
+      if (error) return setErr(error.code === '23503' ? 'El negocio tiene carteles vinculados. Desvincúlalos desde Inventario NFC antes de eliminarlo.' : error.message)
+      if (!data?.length) return setErr('No se pudo eliminar el negocio. Comprueba que tengas permisos de administrador y actualiza la página.')
+      if (f.id === b.id) setF({})
+      await load()
+    } catch {
+      setErr('No se pudo conectar. Intenta eliminar el negocio de nuevo.')
+    } finally {
+      setDeleting(null)
+    }
+  }
   const go = async () => {
     setErr(''); if (!f.trade_name) return setErr('Nombre comercial requerido'); if (f.google_review_url && !isGoogleUrl(f.google_review_url)) return setErr('Enlace de Google no válido')
     const { tags, ...v } = f as Business; const r = f.id ? await sb.from('businesses').update(v).eq('id', f.id) : await sb.from('businesses').insert(v)
@@ -123,5 +157,5 @@ function Businesses() {
   return <div className="space-y-4"><h2 className="text-2xl font-bold text-[#0b1f3a]">Clientes / Negocios</h2>
     <div className={card + ' grid md:grid-cols-2 gap-3'}>{F.map(([k, p]) => <input key={k} className={inp} placeholder={p} value={(f as any)[k] || ''} onChange={e => setF({ ...f, [k]: e.target.value })} />)}
       {err && <p className="text-sm text-red-600">{err}</p>}<button className={btn} onClick={go}>{f.id ? 'Actualizar' : 'Registrar'}</button></div>
-    <div className={card}>{l.map(b => <div key={b.id} onClick={() => setF(b)} className="py-2 border-b border-slate-100 cursor-pointer text-sm"><b>{b.trade_name}</b> · {b.contact_name} · {b.phone}<div className="text-slate-500">Carteles: {b.tags?.map(t => t.folio).join(', ') || '—'}</div></div>)}</div></div>
+    <div className={card}>{l.map(b => <div key={b.id} className="py-2 border-b border-slate-100 text-sm flex items-center gap-3"><button type="button" onClick={() => { setF(b); setErr('') }} className="flex-1 text-left"><b>{b.trade_name}</b> · {b.contact_name} · {b.phone}<div className="text-slate-500">Carteles: {b.tags?.map(t => t.folio).join(', ') || '—'}</div></button><button type="button" className={btn2 + ' text-red-600'} disabled={deleting !== null} onClick={() => remove(b)}>{deleting === b.id ? 'Eliminando…' : 'Eliminar'}</button></div>)}</div></div>
 }
