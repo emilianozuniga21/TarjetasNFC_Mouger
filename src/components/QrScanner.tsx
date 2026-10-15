@@ -48,7 +48,7 @@ export default function QrScanner({ onClose, onDetected }: { onClose: () => void
     return () => { cancelled = true; stop?.() }
   }, [])
 
-  return <div className="fixed inset-0 bg-black/50 grid place-items-center p-4 z-20" role="dialog" aria-modal="true" aria-labelledby="scanner-title">
+  return <div className="mobile-dialog fixed inset-0 bg-black/50 grid place-items-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="scanner-title">
     <div className="rounded-2xl bg-white p-5 w-full max-w-lg max-h-[90dvh] overflow-y-auto space-y-3">
       <div className="flex justify-between items-center"><h2 id="scanner-title" className="font-bold">Escanear QR del cartel</h2><button type="button" onClick={onClose} className="px-3 py-2">Cerrar</button></div>
       <p className="text-sm text-slate-600">Apunta al QR impreso para abrir su ficha y asignarle un negocio.</p>

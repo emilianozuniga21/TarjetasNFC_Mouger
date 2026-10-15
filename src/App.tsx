@@ -18,15 +18,15 @@ export default function App() {
   if (ok === null) return null
   if (!ok) return <div className="p-10">Sin acceso. <button className={btn2} onClick={() => sb.auth.signOut()}>Salir</button></div>
   const nav = [['dash', 'Dashboard', LayoutDashboard], ['inv', 'Inventario NFC', Nfc], ['batch', 'Generar lote', Layers], ['biz', 'Clientes / Negocios', Building2]] as const
-  return <div className="min-h-screen md:flex bg-slate-100 text-slate-800">
-    <aside className="md:w-60 md:shrink-0 bg-[#0b1f3a] text-white p-4 flex flex-col gap-1">
-      <div className="font-bold text-lg px-3 py-2">Mouger NFC</div>
-      <nav aria-label="Menú principal" className="grid grid-cols-2 gap-2 md:flex md:flex-col">
-      {nav.map(([k, l, I]) => <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined} className={`flex items-center gap-2 px-3 py-3 rounded-lg text-sm text-left min-w-0 ${tab === k ? 'bg-blue-600' : 'hover:bg-white/10'}`}><I size={18} className="shrink-0" />{l}</button>)}
+  return <div className="app-shell min-h-screen md:flex bg-slate-100 text-slate-800">
+    <aside className="app-sidebar md:w-60 md:shrink-0 bg-[#0b1f3a] text-white p-4 flex flex-col gap-1">
+      <div className="app-brand font-bold text-lg px-3 py-2">Mouger NFC</div>
+      <nav aria-label="Menú principal" className="app-navigation grid grid-cols-2 gap-2 md:flex md:flex-col">
+      {nav.map(([k, l, I]) => <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined} className={`flex items-center gap-2 px-3 py-3 rounded-lg text-sm text-left min-w-0 ${tab === k ? 'bg-blue-600' : 'hover:bg-white/10'}`}><I size={18} className="shrink-0" /><span>{l}</span></button>)}
       </nav>
-      <button onClick={() => sb.auth.signOut()} className="flex items-center gap-2 px-3 py-2 text-sm md:mt-auto hover:bg-white/10 rounded-lg"><LogOut size={16} />Salir</button>
+      <button onClick={() => sb.auth.signOut()} className="app-signout flex items-center gap-2 px-3 py-2 text-sm md:mt-auto hover:bg-white/10 rounded-lg"><LogOut size={16} />Salir</button>
     </aside>
-    <main className="flex-1 min-w-0 w-full p-4 md:p-8 max-w-6xl">{tab === 'dash' ? <Dash /> : tab === 'inv' ? <Inv /> : tab === 'batch' ? <Batch /> : <Businesses />}</main>
+    <main className="app-main flex-1 min-w-0 w-full p-4 md:p-8 max-w-6xl">{tab === 'dash' ? <Dash /> : tab === 'inv' ? <Inv /> : tab === 'batch' ? <Batch /> : <Businesses />}</main>
   </div>
 }
 
@@ -99,18 +99,18 @@ function Detail({ t, onClose, onSaved }: { t: Tag; onClose: () => void; onSaved:
     let bid = biz; if (!bid && nb.trim()) { const { data, error } = await sb.from('businesses').insert({ trade_name: nb.trim(), google_review_url: url || null }).select().single(); if (error) return setErr(error.message); bid = data.id }
     const { error } = await sb.from('tags').update({ business_id: bid || null, destination_url: url || null, notes, status: bid && url && status === 'disponible' ? 'asignado' : status, ...(bid && url && t.status === 'disponible' ? { assigned_at: new Date().toISOString() } : {}) }).eq('id', t.id)
     if (error) return setErr(error.message); onSaved() }
-  return <div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-10"><div className={`${card} w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-3`}>
-    <div className="flex justify-between"><b>{t.folio}</b><button onClick={onClose}><X size={18} /></button></div>
+  return <div className="mobile-dialog fixed inset-0 bg-black/40 grid place-items-center p-4 z-50" role="dialog" aria-modal="true" aria-label="Configurar cartel"><div className={`${card} w-full max-w-lg max-h-[90dvh] overflow-y-auto space-y-3`}>
+    <div className="flex justify-between"><b>{t.folio}</b><button aria-label="Cerrar ficha" className="p-3 -m-2" onClick={onClose}><X size={18} /></button></div>
     <div className="text-xs text-slate-500">URL para NFC / QR</div>
     <div className="flex gap-2"><input readOnly className={inp} value={tagUrl(t.public_code)} /><button className={btn2} onClick={() => navigator.clipboard.writeText(tagUrl(t.public_code))}><Copy size={16} /></button></div>
     <div className="w-40 mx-auto" dangerouslySetInnerHTML={{ __html: svg }} />
-    <div className="flex gap-2 justify-center"><button className={btn2} onClick={() => save(`${t.folio}.svg`, 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg))}><Download size={14} className="inline" /> SVG</button><button className={btn2} onClick={async () => save(`${t.folio}.png`, await qrPng(t.public_code))}><Download size={14} className="inline" /> PNG</button><a className={btn2} target="_blank" href={tagUrl(t.public_code)}>Probar</a></div>
+    <div className="flex flex-wrap gap-2 justify-center"><button className={btn2} onClick={() => save(`${t.folio}.svg`, 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg))}><Download size={14} className="inline" /> SVG</button><button className={btn2} onClick={async () => save(`${t.folio}.png`, await qrPng(t.public_code))}><Download size={14} className="inline" /> PNG</button><a className={btn2} target="_blank" href={tagUrl(t.public_code)}>Probar</a></div>
     <select className={inp} value={biz} onChange={e => onBiz(e.target.value)}><option value="">— Negocio —</option>{bs.map(b => <option key={b.id} value={b.id}>{b.trade_name}</option>)}</select>
     {!biz && <input className={inp} placeholder="…o nuevo negocio (nombre comercial)" value={nb} onChange={e => setNb(e.target.value)} />}
     <input className={inp} placeholder="Enlace de reseñas de Google (https://…)" value={url} onChange={e => setUrl(e.target.value)} />
     <select className={inp} value={status} onChange={e => setStatus(e.target.value)}>{ST.map(s => <option key={s}>{s}</option>)}</select>
     <textarea className={inp} placeholder="Observaciones" value={notes} onChange={e => setNotes(e.target.value)} />
-    {err && <p className="text-sm text-red-600">{err}</p>}<button className={btn} onClick={go}>Guardar</button></div></div>
+    {err && <p className="text-sm text-red-600">{err}</p>}<button className={btn + ' w-full sm:w-auto'} onClick={go}>Guardar</button></div></div>
 }
 
 function Batch() {
@@ -122,13 +122,13 @@ function Batch() {
   const mm = async () => { if (nm.trim()) { await sb.from('models').insert({ name: nm.trim() }); setNm(''); load() } }
   return <div className="space-y-4"><h2 className="text-2xl font-bold text-[#0b1f3a]">Generar lote</h2>
     <div className={card + ' grid md:grid-cols-2 gap-3'}>
-      <select className={inp} value={m} onChange={e => setM(e.target.value)}>{ms.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-      <input className={inp} type="number" min={1} max={1000} value={qty} onChange={e => setQty(+e.target.value)} />
+      <label className="text-sm space-y-1">Modelo<select className={inp} value={m} onChange={e => setM(e.target.value)}>{ms.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+      <label className="text-sm space-y-1">Cantidad de carteles<input className={inp} type="number" min={1} max={1000} value={qty} onChange={e => setQty(+e.target.value)} /></label>
       <input className={inp} placeholder="Notas del lote" value={notes} onChange={e => setNotes(e.target.value)} />
       <div className="flex gap-2"><input className={inp} placeholder="Nuevo modelo" value={nm} onChange={e => setNm(e.target.value)} /><button className={btn2} onClick={mm}>+</button></div>
       {(['size', 'margin', 'gap'] as const).map(k => <label key={k} className="text-xs text-slate-500">{{ size: 'Tamaño QR (mm)', margin: 'Margen (mm)', gap: 'Separación (mm)' }[k]}<input className={inp} type="number" value={o[k]} onChange={e => setO({ ...o, [k]: +e.target.value })} /></label>)}
       <button className={btn} onClick={mk} disabled={!m}>Generar lote y descargar PDF</button><span className="text-sm self-center">{msg}</span></div>
-    <div className={card}>{bs.map(b => <div key={b.id} className="flex justify-between text-sm py-1 border-b border-slate-100"><span>#{b.batch_number} · {b.quantity} · {b.models?.name} · {new Date(b.created_at).toLocaleDateString()}</span><button className={btn2} onClick={() => pdf(b.id)}>PDF</button></div>)}</div></div>
+    <div className={card}>{bs.map(b => <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm py-3 border-b border-slate-100 break-words"><span>#{b.batch_number} · {b.quantity} · {b.models?.name} · {new Date(b.created_at).toLocaleDateString()}</span><button className={btn2} onClick={() => pdf(b.id)}>PDF</button></div>)}</div></div>
 }
 
 function Businesses() {
@@ -159,7 +159,7 @@ function Businesses() {
     if (r.error) return setErr(r.error.message); setF({}); load() }
   const F = [['trade_name', 'Nombre comercial'], ['contact_name', 'Contacto'], ['phone', 'Teléfono'], ['email', 'Correo'], ['address', 'Dirección (opcional)'], ['google_review_url', 'Enlace de reseñas de Google'], ['notes', 'Observaciones']] as const
   return <div className="space-y-4"><h2 className="text-2xl font-bold text-[#0b1f3a]">Clientes / Negocios</h2>
-    <div className={card + ' grid md:grid-cols-2 gap-3'}>{F.map(([k, p]) => <input key={k} className={inp} placeholder={p} value={(f as any)[k] || ''} onChange={e => setF({ ...f, [k]: e.target.value })} />)}
+    <div className={card + ' grid md:grid-cols-2 gap-3'}>{F.map(([k, p]) => <label key={k} className="text-sm space-y-1">{p}<input className={inp} placeholder={p} value={f[k] || ''} onChange={e => setF({ ...f, [k]: e.target.value })} /></label>)}
       {err && <p className="text-sm text-red-600">{err}</p>}<button className={btn} onClick={go}>{f.id ? 'Actualizar' : 'Registrar'}</button></div>
-    <div className={card}>{l.map(b => <div key={b.id} className="py-2 border-b border-slate-100 text-sm flex items-center gap-3"><button type="button" onClick={() => { setF(b); setErr('') }} className="flex-1 text-left"><b>{b.trade_name}</b> · {b.contact_name} · {b.phone}<div className="text-slate-500">Carteles: {b.tags?.map(t => t.folio).join(', ') || '—'}</div></button><button type="button" className={btn2 + ' text-red-600'} disabled={deleting !== null} onClick={() => remove(b)}>{deleting === b.id ? 'Eliminando…' : 'Eliminar'}</button></div>)}</div></div>
+    <div className={card}>{l.map(b => <div key={b.id} className="py-3 border-b border-slate-100 text-sm flex flex-col sm:flex-row sm:items-center items-stretch gap-3"><button type="button" onClick={() => { setF(b); setErr('') }} className="flex-1 min-w-0 text-left break-words"><b>{b.trade_name}</b> · {b.contact_name} · {b.phone}<div className="text-slate-500">Carteles: {b.tags?.map(t => t.folio).join(', ') || '—'}</div></button><button type="button" className={btn2 + ' text-red-600'} disabled={deleting !== null} onClick={() => remove(b)}>{deleting === b.id ? 'Eliminando…' : 'Eliminar'}</button></div>)}</div></div>
 }
