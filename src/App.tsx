@@ -19,12 +19,14 @@ export default function App() {
   if (!ok) return <div className="p-10">Sin acceso. <button className={btn2} onClick={() => sb.auth.signOut()}>Salir</button></div>
   const nav = [['dash', 'Dashboard', LayoutDashboard], ['inv', 'Inventario NFC', Nfc], ['batch', 'Generar lote', Layers], ['biz', 'Clientes / Negocios', Building2]] as const
   return <div className="min-h-screen md:flex bg-slate-100 text-slate-800">
-    <aside className="md:w-60 bg-[#0b1f3a] text-white p-4 flex md:flex-col gap-1 overflow-x-auto">
-      <div className="font-bold text-lg px-3 py-2 whitespace-nowrap">Mouger NFC</div>
-      {nav.map(([k, l, I]) => <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap ${tab === k ? 'bg-blue-600' : 'hover:bg-white/10'}`}><I size={16} />{l}</button>)}
+    <aside className="md:w-60 md:shrink-0 bg-[#0b1f3a] text-white p-4 flex flex-col gap-1">
+      <div className="font-bold text-lg px-3 py-2">Mouger NFC</div>
+      <nav aria-label="Menú principal" className="grid grid-cols-2 gap-2 md:flex md:flex-col">
+      {nav.map(([k, l, I]) => <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? 'page' : undefined} className={`flex items-center gap-2 px-3 py-3 rounded-lg text-sm text-left min-w-0 ${tab === k ? 'bg-blue-600' : 'hover:bg-white/10'}`}><I size={18} className="shrink-0" />{l}</button>)}
+      </nav>
       <button onClick={() => sb.auth.signOut()} className="flex items-center gap-2 px-3 py-2 text-sm md:mt-auto hover:bg-white/10 rounded-lg"><LogOut size={16} />Salir</button>
     </aside>
-    <main className="flex-1 p-4 md:p-8 max-w-6xl">{tab === 'dash' ? <Dash /> : tab === 'inv' ? <Inv /> : tab === 'batch' ? <Batch /> : <Businesses />}</main>
+    <main className="flex-1 min-w-0 w-full p-4 md:p-8 max-w-6xl">{tab === 'dash' ? <Dash /> : tab === 'inv' ? <Inv /> : tab === 'batch' ? <Batch /> : <Businesses />}</main>
   </div>
 }
 
@@ -75,12 +77,14 @@ function Inv() {
     const { data, count } = await y; setRows((data as Tag[]) || []); setN(count || 0) }
   useEffect(() => { load() }, [pg, st, q])
   return <div className="space-y-4"><h2 className="text-2xl font-bold text-[#0b1f3a]">Inventario NFC</h2>
-    <button className={btn} onClick={() => { setScanError(''); setScanning(true) }}>Escanear QR</button>
+    <button className={btn + ' w-full sm:w-auto min-h-12'} onClick={() => { setScanError(''); setScanning(true) }}>Escanear QR</button>
+    <p className="text-sm text-slate-600">Escanea el cartel impreso para encontrarlo y configurar su negocio.</p>
     {scanError && <p role="status" className="text-sm text-slate-600">{scanError}</p>}
     {scanning && <QrScanner onClose={() => setScanning(false)} onDetected={findScanned} />}
-    <div className="flex gap-2"><input className={inp} placeholder="Buscar folio o código" value={q} onChange={e => { setPg(0); setQ(e.target.value) }} />
-      <select className={inp + ' max-w-48'} value={st} onChange={e => { setPg(0); setSt(e.target.value) }}><option value="">Todos</option>{ST.map(s => <option key={s}>{s}</option>)}</select></div>
-    <div className={card + ' overflow-x-auto p-0'}><table className="w-full text-sm"><thead className="text-left text-slate-500"><tr>{['Folio', 'Código', 'Modelo', 'Estado', 'Negocio'].map(h => <th key={h} className="p-3">{h}</th>)}</tr></thead>
+    <div className="flex flex-col sm:flex-row gap-2"><input className={inp} aria-label="Buscar folio o código" placeholder="Buscar folio o código" value={q} onChange={e => { setPg(0); setQ(e.target.value) }} />
+      <select className={inp + ' sm:max-w-48'} aria-label="Filtrar por estado" value={st} onChange={e => { setPg(0); setSt(e.target.value) }}><option value="">Todos</option>{ST.map(s => <option key={s}>{s}</option>)}</select></div>
+    <div className="grid gap-3 md:hidden">{rows.map(t => <button key={t.id} onClick={() => setSel(t)} className={card + ' text-left space-y-2 min-w-0'}><div className="flex flex-wrap justify-between gap-2"><b>{t.folio}</b><span className="text-sm text-blue-700">{t.status}</span></div><div className="font-mono text-sm break-all">{t.public_code}</div><div className="text-sm text-slate-600 break-words">{t.models?.name} · {t.businesses?.trade_name || 'Sin negocio asignado'}</div><div className="text-sm text-blue-700">Configurar cartel →</div></button>)}</div>
+    <div className={card + ' hidden md:block overflow-x-auto p-0'}><table className="w-full text-sm"><thead className="text-left text-slate-500"><tr>{['Folio', 'Código', 'Modelo', 'Estado', 'Negocio'].map(h => <th key={h} className="p-3">{h}</th>)}</tr></thead>
       <tbody>{rows.map(t => <tr key={t.id} onClick={() => setSel(t)} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"><td className="p-3 font-medium">{t.folio}</td><td className="p-3">{t.public_code}</td><td className="p-3">{t.models?.name}</td><td className="p-3">{t.status}</td><td className="p-3">{t.businesses?.trade_name || '—'}</td></tr>)}</tbody></table></div>
     <div className="flex items-center gap-3 text-sm"><button className={btn2} disabled={!pg} onClick={() => setPg(pg - 1)}>←</button>{pg + 1} / {Math.max(1, Math.ceil(n / 20))} ({n})<button className={btn2} disabled={(pg + 1) * 20 >= n} onClick={() => setPg(pg + 1)}>→</button></div>
     {sel && <Detail t={sel} onClose={() => setSel(null)} onSaved={() => { setSel(null); load() }} />}</div>
