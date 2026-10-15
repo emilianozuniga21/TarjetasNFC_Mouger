@@ -31,7 +31,7 @@ function Login() {
   const [e, setE] = useState(''), [p, setP] = useState(''), [err, setErr] = useState('')
   const go = async () => { const { error } = await sb.auth.signInWithPassword({ email: e, password: p }); if (error) setErr('Credenciales inválidas') }
   return <div className="min-h-screen grid place-items-center bg-[#0b1f3a] p-4"><div className={`${card} w-full max-w-sm space-y-3`}>
-    <h1 className="text-xl font-bold text-[#0b1f3a]">Mouger NFC Manager</h1>
+    <h1 className="text-xl font-bold text-[#0b1f3a]">Mouger NFC</h1>
     <input className={inp} placeholder="Correo" value={e} onChange={x => setE(x.target.value)} />
     <input className={inp} type="password" placeholder="Contraseña" value={p} onChange={x => setP(x.target.value)} onKeyDown={x => x.key === 'Enter' && go()} />
     {err && <p className="text-sm text-red-600">{err}</p>}<button className={`${btn} w-full`} onClick={go}>Entrar</button></div></div>
